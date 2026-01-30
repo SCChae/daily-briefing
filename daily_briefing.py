@@ -8,6 +8,7 @@ Daily Briefing 생성기
 - Slack 채널로 전송
 """
 
+import argparse
 import datetime
 import requests
 from get_my_calendar_today import get_calendar_service, AINR_CAL
@@ -140,6 +141,11 @@ def generate_briefing(date: str, events: list, weather: str, special_days: list,
 
 def main():
     """Daily Briefing 실행"""
+    # 인자 파싱
+    parser = argparse.ArgumentParser(description='Daily Briefing 생성기')
+    parser.add_argument('-p', '--prod', action='store_true',
+                        help='실행 모드 (기본: 테스트 모드)')
+    args = parser.parse_args()
 
     print("=== Daily Briefing 생성 시작 ===\n")
 
@@ -152,10 +158,10 @@ def main():
     # 2. 쉬는 날 체크
     print("\n쉬는 날 여부 확인 중...")
     is_off, reason = is_day_off()
-#    if is_off:
-#        print(f"오늘은 쉬는 날입니다: {reason}")
-#        print("브리핑을 생성하지 않고 종료합니다.")
-#        return
+    if is_off:
+        print(f"오늘은 쉬는 날입니다: {reason}")
+        print("브리핑을 생성하지 않고 종료합니다.")
+        return
 
     # 3. Google Calendar 일정 조회
     print("\n캘린더 일정 조회 중...")
@@ -216,8 +222,12 @@ def main():
     # 9. Slack 전송
     print("\nSlack 전송 중...")
     try:
-        slack = AinSlack("/home/scchae/work/chae/tools/slack_credential_test.json")
-        #slack = AinSlack("/home/scchae/work/chae/tools/slack_credential_service.json")
+        if args.prod:
+            slack = AinSlack("/home/scchae/work/chae/tools/slack_credential_service.json")
+            print("(실행 모드)")
+        else:
+            slack = AinSlack("/home/scchae/work/chae/tools/slack_credential_test.json")
+            print("(테스트 모드)")
         thread_id = slack.send_message(briefing)
         if thread_id:
             print(f"전송 완료! Thread ID: {thread_id}")
