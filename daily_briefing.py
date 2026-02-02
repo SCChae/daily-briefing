@@ -11,7 +11,7 @@ Daily Briefing 생성기
 import argparse
 import datetime
 import requests
-from get_my_calendar_today import get_calendar_service, AINR_CAL
+from get_my_calendar_today import get_calendar_service, AINR_CAL, DATONR_CAL
 from weather import get_today_weather
 from todayinfo import is_day_off, get_upcoming_special_days
 from useless_fact import UselessFact
@@ -168,6 +168,8 @@ def main():
     try:
         service = get_calendar_service()
         events = get_todays_events(service, AINR_CAL)
+        events += get_todays_events(service, DATONR_CAL)
+        events.sort(key=lambda e: e['start_time'])
         print(f"일정 {len(events)}개 조회됨")
         for e in events:
             print(f"  - {e['start_time']} {e['summary']}")

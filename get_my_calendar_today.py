@@ -79,7 +79,7 @@ def get_todays_calendar_events(service, calendar_id):
             # 한국 시간으로 변환
         KST = datetime.timezone(datetime.timedelta(hours=9))
         today = datetime.datetime.now(KST).date()
-        today = today + datetime.timedelta(days=1)  # 내일 날짜 보기
+        #today = today + datetime.timedelta(days=1)  # 내일 날짜 보기
 
         start_of_day = datetime.datetime.combine(today, datetime.datetime.min.time())
         end_of_day = datetime.datetime.combine(today, datetime.datetime.max.time())
@@ -119,6 +119,7 @@ def get_todays_calendar_events(service, calendar_id):
 
 AIN_CAL  = 'c_0dfb641923f99dd9592aea5532373393a5a56b61ff6004a4665a5ee96d8f364e@group.calendar.google.com'
 AINR_CAL = 'c_4a296c449497a5362d9a06a2ae85431fbc1bc7771e0a6184eb9dd95ec23e46c2@group.calendar.google.com'
+DATONR_CAL = 'c_765521344c3e3dff24976481f7ad15a725560472920d2e6f1b0ac1f831cdcd35@group.calendar.google.com'
 MY_CAL   = 'chae@aination.kr'
 
 def main():
@@ -131,6 +132,8 @@ def main():
     
     # Get events for selected calendar
     msg = get_todays_calendar_events(service, AINR_CAL)
+    print(msg)
+    msg = get_todays_calendar_events(service, DATONR_CAL)
     print(msg)
 #    slack = AinSlack("/home/scchae/work/tigris/slack_credential.json")
 #    thread_id = slack.send_message(msg)
