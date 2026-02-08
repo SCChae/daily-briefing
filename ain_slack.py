@@ -25,18 +25,20 @@ class AinSlack:
         except json.JSONDecodeError:
             raise ValueError(f"Credential 파일이 올바른 JSON 형식이 아닙니다: {credential_path}")
 
-    def send_message(self, message):
+    def send_message(self, message, blocks=None):
         """
         Slack 채널에 메시지 전송
         Args:
-            message (str): 전송할 메시지
+            message (str): 전송할 메시지 (blocks 사용시 fallback text)
+            blocks (list, optional): Slack Block Kit 블록 리스트
         Returns:
             str: 메시지 thread ID (실패시 None)
         """
         try:
             response = self.client.chat_postMessage(
                 channel=self.channel_id,
-                text=message
+                text=message,
+                blocks=blocks
             )
             return response["ts"]
         except SlackApiError as e:
