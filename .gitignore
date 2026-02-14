@@ -2,6 +2,7 @@
 .env
 
 # 인증 정보
+credential/
 *.json
 !package.json
 

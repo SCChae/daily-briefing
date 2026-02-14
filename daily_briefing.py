@@ -14,11 +14,11 @@ import datetime
 import json
 import requests
 import arrow
-from get_my_calendar_today import get_calendar_service, AINR_CAL, DATONR_CAL
-from weather import get_today_weather
-from todayinfo import is_day_off, get_upcoming_special_days
-from useless_fact import UselessFact
-from ain_slack import AinSlack
+from util.get_my_calendar_today import get_calendar_service, AINR_CAL, DATONR_CAL
+from util.weather import get_today_weather
+from util.todayinfo import is_day_off, get_upcoming_special_days
+from util.useless_fact import UselessFact
+from util.ain_slack import AinSlack
 
 # Ollama 설정
 OLLAMA_URL = "http://localhost:11434"
@@ -475,10 +475,10 @@ def main():
     print("\nSlack 전송 중...")
     try:
         if args.prod:
-            slack = AinSlack("/home/scchae/work/chae/tools/slack_credential_service.json")
+            slack = AinSlack("/home/scchae/work/chae/tools/credential/slack_credential_service.json")
             print("(실행 모드)")
         else:
-            slack = AinSlack("/home/scchae/work/chae/tools/slack_credential_test.json")
+            slack = AinSlack("/home/scchae/work/chae/tools/credential/slack_credential_test.json")
             print("(테스트 모드)")
         thread_id = slack.send_message(fallback_text, blocks=blocks)
         if thread_id:
