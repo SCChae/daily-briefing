@@ -13,11 +13,20 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import json
 
+import os
 import pickledb
 from typing import Dict, List
+from dotenv import load_dotenv
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CREDENTIAL_ENV = os.path.join(BASE_DIR, "credential", ".env")
+SCHEDULES_DB = os.path.join(BASE_DIR, "schedules.db")
+TOKEN_PATH = os.path.join(BASE_DIR, "credential", "token.json")
+
+load_dotenv(CREDENTIAL_ENV)
 
 class ScheduleManager:
-    def __init__(self, db_path: str = '/home/scchae/work/chae/tools/schedules.db'):
+    def __init__(self, db_path: str = SCHEDULES_DB):
         """
         ScheduleManager 초기화
         Args:
@@ -90,7 +99,7 @@ def get_calendar_service():
     """Gets authorized calendar service."""
     creds = None
     # token.json 파일이 있는 경우 로드
-    token_path="/home/scchae/work/chae/tools/credential/token.json"
+    token_path = TOKEN_PATH
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
     # 유효한 크레덴셜이 없거나 만료된 경우
@@ -231,8 +240,8 @@ def main():
     manager = ScheduleManager()
     session = requests.session()
     login_info = {
-        "loginId": "chae@daton.ai",
-        "passwd": "swcplan1!"
+        "loginId": os.environ["TIGRIS_LOGIN_ID"],
+        "passwd": os.environ["TIGRIS_PASSWORD"],
     }
 
     #POST로 데이터 보내기

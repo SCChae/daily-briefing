@@ -19,6 +19,11 @@ from util.weather import get_today_weather
 from util.todayinfo import is_day_off, get_upcoming_special_days
 from util.useless_fact import UselessFact
 from util.ain_slack import AinSlack
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SLACK_CREDENTIAL_SERVICE = os.path.join(BASE_DIR, "credential", "slack_credential_service.json")
+SLACK_CREDENTIAL_TEST = os.path.join(BASE_DIR, "credential", "slack_credential_test.json")
 
 # Ollama 설정
 OLLAMA_URL = "http://localhost:11434"
@@ -475,10 +480,10 @@ def main():
     print("\nSlack 전송 중...")
     try:
         if args.prod:
-            slack = AinSlack("/home/scchae/work/chae/tools/credential/slack_credential_service.json")
+            slack = AinSlack(SLACK_CREDENTIAL_SERVICE)
             print("(실행 모드)")
         else:
-            slack = AinSlack("/home/scchae/work/chae/tools/credential/slack_credential_test.json")
+            slack = AinSlack(SLACK_CREDENTIAL_TEST)
             print("(테스트 모드)")
         thread_id = slack.send_message(fallback_text, blocks=blocks)
         if thread_id:

@@ -1,5 +1,5 @@
 import datetime
-import os.path
+import os
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -7,6 +7,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import pytz
 from util.ain_slack import AinSlack
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TOKEN_PATH = os.path.join(BASE_DIR, "credential", "token.json")
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
@@ -27,7 +30,7 @@ def get_calendar_service():
     """Gets authorized calendar service."""
     creds = None
     # token.json 파일이 있는 경우 로드
-    token_path="/home/scchae/work/chae/tools/credential/token.json"
+    token_path = TOKEN_PATH
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
     # 유효한 크레덴셜이 없거나 만료된 경우
