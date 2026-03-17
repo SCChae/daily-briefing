@@ -8,6 +8,7 @@ from util.ain_slack import AinSlack
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CREDENTIAL_ENV = os.path.join(BASE_DIR, "credential", ".env")
+SLACK_CREDENTIAL_NOTICE = os.path.join(BASE_DIR, "credential", "slack_credential_notice.json")
 SLACK_CREDENTIAL_TEST = os.path.join(BASE_DIR, "credential", "slack_credential_test.json")
 NOTICE_DB = os.path.join(BASE_DIR, "notice.db")
 
@@ -58,7 +59,7 @@ def main():
     manager = NoticeManager()
 
     # Slack 메시지 전송
-    slack = AinSlack(SLACK_CREDENTIAL_TEST)
+    slack = AinSlack(SLACK_CREDENTIAL_NOTICE)
     new_count = 0
     for notice in notices:
         if not manager.check_and_save_notice(notice):

@@ -117,9 +117,7 @@ def get_today_weather():
     if items is None:
         return "날씨 정보를 가져오지 못했습니다. 😢"
 
-    # 예보 데이터 추출
-    sky = find_forecast_value(items, 'SKY')
-    precipitation = find_forecast_value(items, 'PTY')
+    # 최저/최고 기온
     lowest_temp = find_forecast_value(items, 'TMN')
     highest_temp = find_forecast_value(items, 'TMX')
 
@@ -129,20 +127,50 @@ def get_today_weather():
         if items_0200:
             lowest_temp = find_forecast_value(items_0200, 'TMN')
 
-    if sky is None or precipitation is None:
-        return "날씨 정보를 가져오지 못했습니다. 😢"
+    # 시간대별 예보: 오전(09), 낮(12), 오후(15), 저녁(18)
+    SLOTS = [('0900', '오전'), ('1200', '낮'), ('1500', '오후'), ('1800', '저녁')]
+    slot_parts = []
+    prev_sky_key = None
+    for fcst_time, label in SLOTS:
+        sky = find_forecast_value(items, 'SKY', fcst_time)
+        pty = find_forecast_value(items, 'PTY', fcst_time)
+        tmp = find_forecast_value(items, 'TMP', fcst_time)
+        pop = find_forecast_value(items, 'POP', fcst_time)
+        if sky is None:
+            continue
 
-    weather_of_today = f"{STATUS_OF_SKY.get(sky, sky)} (강수: {STATUS_OF_PRECIPITATION.get(precipitation, precipitation)})"
+        sky_key = pty if pty and pty != '0' else sky
+        sky_str = STATUS_OF_PRECIPITATION.get(pty, '') if pty and pty != '0' else STATUS_OF_SKY.get(sky, sky)
 
-    weather_msg = f"🌏 현재 날씨: {weather_of_today}\n"
-    if highest_temp:
-        weather_msg += f"🔼 최고 기온: {highest_temp}°C\n"
-    if lowest_temp:
-        weather_msg += f"🔽 최저 기온: {lowest_temp}°C\n"
-    weather_msg += f"🔎 관측 지점: 서울 서초구 양재1동\n"
-    weather_msg += f"📡 발표 시각: {base_date} {base_time}"
+        parts = [f"{label} {sky_str} {tmp}°C"]
+        if pop and int(pop) >= 20:
+            parts.append(f"강수{pop}%")
+        slot_str = ' '.join(parts)
 
-    return weather_msg
+        # 하늘상태가 이전 슬롯과 같으면 기온만 표시
+        if sky_key == prev_sky_key:
+            slot_str = f"{label} {tmp}°C"
+            if pop and int(pop) >= 20:
+                slot_str += f" 강수{pop}%"
+
+        slot_parts.append(slot_str)
+        prev_sky_key = sky_key
+
+    temp_range = ""
+    if lowest_temp and highest_temp:
+        temp_range = f"🌡 {lowest_temp}°C → {highest_temp}°C"
+    elif highest_temp:
+        temp_range = f"🌡 최고 {highest_temp}°C"
+
+    forecast_line = " / ".join(slot_parts)
+
+    weather_msg = ""
+    if temp_range:
+        weather_msg += f"{temp_range}\n"
+    if forecast_line:
+        weather_msg += f"📋 {forecast_line}"
+
+    return weather_msg if weather_msg else "날씨 정보를 가져오지 못했습니다. 😢"
 
 
 def main():

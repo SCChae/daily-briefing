@@ -16,6 +16,7 @@ import requests
 import arrow
 from util.get_my_calendar_today import get_calendar_service, AINR_CAL, DATONR_CAL
 from util.weather import get_today_weather
+from util.air_quality import get_air_quality
 from util.todayinfo import is_day_off, get_upcoming_special_days
 from util.useless_fact import UselessFact
 from util.ain_slack import AinSlack
@@ -27,7 +28,8 @@ SLACK_CREDENTIAL_TEST = os.path.join(BASE_DIR, "credential", "slack_credential_t
 
 # Ollama 설정
 OLLAMA_URL = "http://localhost:11434"
-OLLAMA_MODEL = "exaone3.5:32b"
+#OLLAMA_MODEL = "exaone3.5:32b"
+OLLAMA_MODEL = "qwen3.5:27b"
 
 
 def get_date_position(date: datetime.date = None) -> str:
@@ -104,83 +106,7 @@ def get_todays_events(service, calendar_id: str) -> list:
     return result
 
 
-def generate_briefing(date: str, events: list, weather: str, special_days: list, fact: str) -> str:
-    """
-    Ollama를 통해 브리핑 문구 생성
-    Args:
-        date: 오늘 날짜 문자열
-        events: 일정 리스트
-        weather: 날씨 정보 문자열
-        special_days: 특일 정보 리스트
-        fact: useless fact 문자열
-    Returns:
-        브리핑 문구
-    """
-    # 일정 포맷팅
-    if events:
-        events_text = "\n".join([f"- {e['start_time']} {e['summary']}" for e in events])
-    else:
-        events_text = "오늘은 일정이 없습니다."
-
-    # 특일 정보 포맷팅
-    type_names = {'holiday': '공휴일', 'division': '24절기', 'sundry': '잡절'}
-    if special_days:
-        special_text = "\n".join([
-            f"- {day['date']}: {day['name']} ({type_names.get(day['type'], day['type'])})"
-            for day in special_days
-        ])
-    else:
-        special_text = "오늘~내일 중 특별한 날이 없습니다."
-
-    prompt = f"""당신은 친근한 비서입니다. 다음 정보를 바탕으로 아침 브리핑 메시지를 작성해주세요.
-
-오늘 날짜: {date}
-
-오늘의 날씨:
-{weather}
-
-오늘의 일정:
-{events_text}
-
-특일 정보:
-{special_text}
-
-오늘의 잡학사실 (영어):
-{fact}
-
-다음 형식으로 작성해주세요:
-인사말 (날짜 포함)
-오늘의 날씨 요약 (기온, 날씨 상태 간단히)
-오늘의 일정 요약(오늘의 일정중에 00:00으로 된 시간은 종일 일정으로 언급하기)
-특일정보가 있으면 간단히 언급하고, 없으면 아무런 코멘트 금지
-잡학사실을 한국어로 번역하고 재미있게 소개
-마무리 인사
-
-짧고 간결하게 작성하되, 밝고 긍정적인 톤으로 작성해주세요.  **은 사용하지 말아주세요."""
-
-    ollama_request = {
-        "model": OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "max_tokens": 1000
-        }
-    }
-
-    response = requests.post(
-        f"{OLLAMA_URL}/api/generate",
-        json=ollama_request,
-        timeout=120
-    )
-    response.raise_for_status()
-
-    result = response.json()
-    return result.get("response", "").strip()
-
-
-def generate_briefing_json(date: str, events: list, weather: str, special_days: list, fact: str, date_position: str = "") -> dict:
+def generate_briefing_json(date: str, events: list, weather: str, special_days: list, fact: str, date_position: str = "", air_quality: str = "") -> dict:
     """
     Ollama를 통해 JSON 형식의 브리핑 생성
     Args:
@@ -190,6 +116,7 @@ def generate_briefing_json(date: str, events: list, weather: str, special_days: 
         special_days: 특일 정보 리스트
         fact: useless fact 문자열
         date_position: 날짜 위치 정보 문자열
+        air_quality: 공기질 정보 문자열
     Returns:
         브리핑 JSON dict
     """
@@ -219,6 +146,9 @@ def generate_briefing_json(date: str, events: list, weather: str, special_days: 
 오늘의 날씨:
 {weather}
 
+오늘의 공기질:
+{air_quality if air_quality else "공기질 정보 없음"}
+
 오늘의 일정:
 {events_text}
 
@@ -230,11 +160,11 @@ def generate_briefing_json(date: str, events: list, weather: str, special_days: 
 
 다음 JSON 형식으로 작성해주세요. 반드시 유효한 JSON만 출력하세요:
 {{
-  "greeting": "인사말 (날짜와 날짜 위치 정보를 자연스럽게 포함, 예: '2026년의 39번째 날' 또는 '올해가 10% 지났네요' 등, 2-3문장)",
+  "greeting": "아침 인사말 (3-4문장). 날짜와 요일을 자연스럽게 언급하고, 날씨/일정/특일 등 오늘의 전체 맥락을 고려해서 연구원들에게 힘이 나고 유머러스한 인사말을 작성. 월요일이면 주말 끝 위로, 금요일이면 불금 언급, 날씨가 좋으면 기분 좋은 멘트, 일정이 많으면 파이팅 멘트 등 상황에 맞게 재치있게. **은 절대 사용하지 말 것.",
   "weather": "날씨 요약 (최저, 최고 기온, 날씨 상태 간단히, 1-2문장)",
   "schedule": "일정 브리핑 (00:00은 종일 일정으로 언급, 중복일정이 있으면 한번만 언급, 연구원들 재택근무는 정확히 팀과 이름을 언급)",
   "special_day": "특일 정보가 있으면 간단히 언급, 없으면 special_day 항목을 생성하지 않음",
-  "fact": "잡학사실 한국어 번역과 재미있는 코멘트 (2-3문장), 잡학사실 내용이 성적인 내용을 포함하거나 불쾌감을 유발하는 내용이면 항목을 생성하지 않음",
+  "fact": "반드시 한국어로만 작성. 영어 원문을 한국어로 번역한 내용 + 재미있는 코멘트 (2-3문장). 영어를 절대 포함하지 말 것. 잡학사실 내용이 성적이거나 불쾌감을 유발하면 항목을 생성하지 않음",
   "closing": "마무리 인사(날짜 포함, 날씨와 요일을 고려해서 연구활동을 독려하는 적절한 1문장)"
 }}
 
@@ -246,7 +176,6 @@ def generate_briefing_json(date: str, events: list, weather: str, special_days: 
 이승민 AI 솔루션개발팀/주임연구원
 정종찬 AI 솔루션개발팀/주임연구원
 강진형 AI 솔루션개발팀/연구원
-박종석 AI 솔루션개발팀/연구원
 최호진 기반기술실/실장 
 문영민 기반기술실/파트장
 김규태 AI 비전솔루션팀/팀장
@@ -300,12 +229,15 @@ def generate_briefing_json(date: str, events: list, weather: str, special_days: 
         }
 
 
-def build_slack_blocks(date: str, briefing: dict) -> list:
+def build_slack_blocks(date: str, briefing: dict, date_position: str = "", air_quality: str = "", original_fact: str = "") -> list:
     """
     브리핑 JSON을 Slack Block Kit 형식으로 변환
     Args:
         date: 오늘 날짜 문자열
         briefing: 브리핑 JSON dict
+        date_position: 날짜 위치 정보 문자열
+        air_quality: 공기질 정보 문자열
+        original_fact: 잡학사실 영문 원문
     Returns:
         Slack Block Kit 블록 리스트
     """
@@ -321,12 +253,27 @@ def build_slack_blocks(date: str, briefing: dict) -> list:
         }
     })
 
-    # 인사말
+    # 인사말 + 날짜 위치
+    greeting_text = f"👋 {briefing.get('greeting', '')}"
+    if date_position:
+        greeting_text += f"\n_{date_position}_"
     blocks.append({
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": f"👋 {briefing.get('greeting', '')}\n{briefing.get('weather', '')}"
+            "text": greeting_text
+        }
+    })
+
+    # 날씨 + 공기질
+    weather_text = briefing.get('weather', '')
+    if air_quality:
+        weather_text += f"\n{air_quality}"
+    blocks.append({
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": weather_text
         }
     })
 
@@ -355,11 +302,12 @@ def build_slack_blocks(date: str, briefing: dict) -> list:
     blocks.append({"type": "divider"})
 
     # 잡학사실
+    fact_text = f"*💡 오늘의 잡학사실*\n{briefing.get('fact', '')}"
     blocks.append({
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": f"*💡 오늘의 잡학사실*\n{briefing.get('fact', '')}"
+            "text": fact_text
         }
     })
 
@@ -427,6 +375,15 @@ def main():
         print(f"날씨 조회 실패: {e}")
         weather = "날씨 정보를 가져오지 못했습니다."
 
+    # 4-1. 공기질 정보 조회
+    print("\n공기질 정보 조회 중...")
+    try:
+        air_quality = get_air_quality()
+        print(air_quality)
+    except Exception as e:
+        print(f"공기질 조회 실패: {e}")
+        air_quality = "공기질 정보를 가져오지 못했습니다."
+
     # 5. 특일 정보 조회
     print("\n특일 정보 조회 중...")
     try:
@@ -460,7 +417,7 @@ def main():
     # 9. Ollama 브리핑 생성 (JSON 형식)
     print("\n브리핑 생성 중...")
     try:
-        briefing = generate_briefing_json(date_str, events, weather, special_days, fact, date_position)
+        briefing = generate_briefing_json(date_str, events, weather, special_days, fact, date_position, air_quality)
         print(f"\n--- 브리핑 내용 (JSON) ---")
         print(json.dumps(briefing, ensure_ascii=False, indent=2))
         print("-------------------")
@@ -470,7 +427,7 @@ def main():
 
     # 10. Block Kit 변환
     print("\nBlock Kit 변환 중...")
-    blocks = build_slack_blocks(date_str, briefing)
+    blocks = build_slack_blocks(date_str, briefing, date_position, air_quality, fact)
 
     # fallback text 생성
     fallback_text = f"{briefing.get('greeting', '')} {briefing.get('weather', '')} {briefing.get('schedule', '')} {briefing.get('closing', '')}"
