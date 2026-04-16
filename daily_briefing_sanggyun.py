@@ -23,13 +23,12 @@ from util.ain_slack import AinSlack
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SLACK_CREDENTIAL_SERVICE = os.path.join(BASE_DIR, "credential", "slack_credential_service.json")
+SLACK_CREDENTIAL_SERVICE = os.path.join(BASE_DIR, "credential", "slack_credential_sanggyun.json")
 SLACK_CREDENTIAL_TEST = os.path.join(BASE_DIR, "credential", "slack_credential_test.json")
 
 # Ollama 설정
 OLLAMA_URL = "http://localhost:11434"
 OLLAMA_MODEL = "exaone3.5:32b"
-#OLLAMA_MODEL = "qwen3.5:27b"
 #OLLAMA_MODEL = "gemma4:26b"
 
 
@@ -66,53 +65,12 @@ def get_date_position(date: datetime.date = None) -> str:
     )
 
 
-def get_todays_events(service, calendar_id: str) -> list:
-    """
-    오늘의 캘린더 일정 조회
-    Args:
-        service: Google Calendar 서비스 객체
-        calendar_id: 캘린더 ID
-    Returns:
-        일정 리스트 [{"summary": "...", "start_time": "..."}]
-    """
-    KST = datetime.timezone(datetime.timedelta(hours=9))
-    today = datetime.datetime.now(KST).date()
 
-    start_of_day = datetime.datetime.combine(today, datetime.datetime.min.time())
-    end_of_day = datetime.datetime.combine(today, datetime.datetime.max.time())
-
-    start_of_day = start_of_day.replace(tzinfo=KST)
-    end_of_day = end_of_day.replace(tzinfo=KST)
-
-    events_result = service.events().list(
-        calendarId=calendar_id,
-        timeMin=start_of_day.isoformat(),
-        timeMax=end_of_day.isoformat(),
-        singleEvents=True,
-        orderBy="startTime"
-    ).execute()
-
-    events = events_result.get("items", [])
-    result = []
-
-    for event in events:
-        start = event["start"].get("dateTime", event["start"].get("date"))
-        dt = datetime.datetime.fromisoformat(start)
-        start_str = dt.strftime("%H:%M")
-        result.append({
-            "summary": event["summary"],
-            "start_time": start_str
-        })
-
-    return result
-
-
-def generate_briefing_json(date: str, events: list, weather: str, special_days: list, fact: str, date_position: str = "", air_quality: str = "") -> dict:
+def generate_briefing_json(date: str, weather: str, special_days: list, fact: str, date_position: str = "", air_quality: str = "") -> dict:
     """
     Ollama를 통해 JSON 형식의 브리핑 생성
     Args:
         date: 오늘 날짜 문자열
-        events: 일정 리스트
         weather: 날씨 정보 문자열
         special_days: 특일 정보 리스트
         fact: useless fact 문자열
@@ -121,11 +79,6 @@ def generate_briefing_json(date: str, events: list, weather: str, special_days: 
     Returns:
         브리핑 JSON dict
     """
-    # 일정 포맷팅
-    if events:
-        events_text = "\n".join([f"- {e['start_time']} {e['summary']}" for e in events])
-    else:
-        events_text = "오늘은 일정이 없습니다."
 
     # 특일 정보 포맷팅
     type_names = {'holiday': '공휴일', 'division': '24절기', 'sundry': '잡절'}
@@ -139,51 +92,24 @@ def generate_briefing_json(date: str, events: list, weather: str, special_days: 
 
     prompt = f"""당신은 친근한 비서입니다. 다음 정보를 바탕으로 아침 브리핑 내용을 JSON 형식으로 작성해주세요.
 
-오늘 날짜: {date}
-
-날짜 위치 정보:
-{date_position}
-
-오늘의 날씨:
-{weather}
-
-오늘의 공기질:
-{air_quality if air_quality else "공기질 정보 없음"}
-
-오늘의 일정:
-{events_text}
-
-특일 정보:
-{special_text if special_text else "없음"}
-
-오늘의 잡학사실 (영어):
-{fact}
+참조할 정보  
+1. 오늘 날짜: {date}
+2. 날짜 위치 정보: {date_position}
+3. 오늘의 날씨: {weather}
+4. 오늘의 공기질: {air_quality if air_quality else "공기질 정보 없음"}
+5. 특일 정보: {special_text if special_text else "없음"}
+6. 오늘의 잡학사실 (영어): {fact}
 
 다음 JSON 형식으로 작성해주세요. 반드시 유효한 JSON만 출력하세요:
 {{
-  "greeting": "아침 인사말 (3-4문장). 날짜와 요일을 자연스럽게 언급하고, 날씨/일정/특일 등 오늘의 전체 맥락을 고려해서 연구원들에게 힘이 나고 유머러스한 인사말을 작성. 월요일이면 주말 끝 위로, 금요일이면 불금 언급, 날씨가 좋으면 기분 좋은 멘트, 일정이 많으면 파이팅 멘트 등 상황에 맞게 재치있게. **은 절대 사용하지 말 것.",
-  "weather": "날씨 요약 (최저, 최고 기온, 날씨 상태 간단히, 1-2문장)",
-  "schedule": "일정 브리핑 (00:00은 종일 일정으로 언급, 중복일정이 있으면 한번만 언급, 연구원들 재택근무는 정확히 팀과 이름을 언급)",
+  "greeting": "아침 인사말 (3-4문장). 날짜와 요일을 자연스럽게 언급하고, 오늘의 전체 맥락을 고려해서 LVIS OB들에게 힘이 나고 유머러스한 인사말을 작성. 월요일이면 주말 끝 위로, 금요일이면 불금 언급 등 상황에 맞게 재치있게.",
+  "weather": "날씨 요약 (최저, 최고 기온, 날씨 상태 간단히, 1-2문장), 공기질 정보",
   "special_day": "특일 정보가 있으면 간단히 언급, 없으면 special_day 항목을 생성하지 않음",
   "fact": "반드시 한국어로만 작성. 영어 원문을 한국어로 번역한 내용 + 재미있는 코멘트 (2-3문장). 영어를 절대 포함하지 말 것. 잡학사실 내용이 성적이거나 불쾌감을 유발하면 항목을 생성하지 않음",
-  "closing": "마무리 인사(날짜 포함, 날씨와 요일을 고려해서 연구활동을 독려하는 적절한 1문장)"
+  "closing": "마무리 인사(날짜 포함, 날씨와 요일을 고려해서 좋은 하루가 되도록 하기 위해 적절한 1문장)"
 }}
 
 짧고 간결하게, 밝고 긍정적인 톤으로 작성해주세요.
-
-참고: 일정에 다음과 같은 이름이 있으면 소속과 직책을 확인해서 보정해줘.
-
-이세라 AI 솔루션개발팀/팀장
-이승민 AI 솔루션개발팀/주임연구원
-정종찬 AI 솔루션개발팀/주임연구원
-강진형 AI 솔루션개발팀/연구원
-최호진 기반기술실/실장 
-문영민 기반기술실/파트장
-채승철 산업지능연구소/소장
-
-팀이름은 줄임말도 정식명칭으로 해줘
-솔개팀--> AI솔루션개발팀
-비솔팀--> AI비전솔루션팀
 
 
 """
@@ -217,7 +143,6 @@ def generate_briefing_json(date: str, events: list, weather: str, special_days: 
         return {
             "greeting": f"안녕하세요! {date}입니다.",
             "weather": weather,
-            "schedule": events_text,
             "special_day": special_text if special_text else None,
             "fact": fact,
             "closing": "좋은 하루 보내세요!"
@@ -272,15 +197,6 @@ def build_slack_blocks(date: str, briefing: dict, date_position: str = "", air_q
         }
     })
 
-
-    # 일정
-    blocks.append({
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": f"*📆 오늘의 일정*\n{briefing.get('schedule', '')}"
-        }
-    })
 
     # 특일 정보 (있는 경우에만)
     special_day = briefing.get('special_day')
@@ -347,20 +263,6 @@ def main():
         print("브리핑을 생성하지 않고 종료합니다.")
         return
 
-    # 3. Google Calendar 일정 조회
-    print("\n캘린더 일정 조회 중...")
-    try:
-        service = get_calendar_service()
-        events = get_todays_events(service, AINR_CAL)
-        events += get_todays_events(service, DATONR_CAL)
-        events.sort(key=lambda e: e['start_time'])
-        print(f"일정 {len(events)}개 조회됨")
-        for e in events:
-            print(f"  - {e['start_time']} {e['summary']}")
-    except Exception as e:
-        print(f"캘린더 조회 실패: {e}")
-        events = []
-
     # 4. 날씨 정보 조회
     print("\n날씨 정보 조회 중...")
     try:
@@ -412,7 +314,7 @@ def main():
     # 9. Ollama 브리핑 생성 (JSON 형식)
     print("\n브리핑 생성 중...")
     try:
-        briefing = generate_briefing_json(date_str, events, weather, special_days, fact, date_position, air_quality)
+        briefing = generate_briefing_json(date_str, weather, special_days, fact, date_position, air_quality)
         print(f"\n--- 브리핑 내용 (JSON) ---")
         print(json.dumps(briefing, ensure_ascii=False, indent=2))
         print("-------------------")

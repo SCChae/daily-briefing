@@ -23,5 +23,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+logs/
 .claude/
 daily_briefing.log
+notice.db
+schedules.db
